@@ -256,16 +256,18 @@ fun main(args: Array<String>) {
 
     if (runOpt) {
         println("Run...")
-        if (!result.exists()) result.createNewFile()
-        result.writer().apply {
-            append("\"name\"")
-            append(",")
-            append(configuration.measures.joinToString(","))
-            if (configuration.measures.isNotEmpty()) {
-                append(",")
-            }
-            appendln((0 until configuration.iterations).joinToString(",") { "\"iteration $it\"" })
-        }.close()
+        if (!result.exists()) {
+            result.createNewFile()
+            result.writer().apply {
+		         append("\"name\"")
+		         append(",")
+		         append(configuration.measures.joinToString(","))
+		         if (configuration.measures.isNotEmpty()) {
+		             append(",")
+		         }
+		         appendln((0 until configuration.iterations).joinToString(",") { "\"iteration $it\"" })
+        		}.close()
+        }
 
         for (experiment in configuration.experiments.filter { !it.disable }.sortedBy { it.difficulty ?: 0 }) {
             val lockFile = File(configuration.output(), ".lock_" + experiment.name)
