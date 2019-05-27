@@ -1,0 +1,79 @@
+---
+comments: >
+  Exéprience utilisant la version AES Global Round avec implémentation de MC en fonction de DY, DY2 et DY 3
+src: ./AES/aes_global_round/src
+build: $SOURCE/build/libs
+output: ./AES/aes_global_round/results
+versioning:
+  repository:
+    url: https://github.com/rloic/PFE
+    authentication: true
+  version: bf67f723c02ddb1cbf56357b00ba8b899ab886f4
+compile: gradle --build-file $SOURCE/build_aes.gradle jar
+execute: java -jar $BUILD/AES-1.0-SNAPSHOT.jar
+experiments:
+# AES 128
+  - name: AES128-3-5
+    parameters: [AES128, 3, 5]
+  - name: AES128-4-12
+    parameters: [AES128, 4, 12]
+    difficulty: 1
+  - name: AES128-5-17
+    parameters: [AES128, 5, 17]
+    difficulty: 2
+# AES 192
+  - name: AES192-3-1
+    parameters: [AES192, 3, 1]
+  - name: AES192-4-4
+    parameters: [AES192, 4, 4]
+  - name: AES192-5-5
+    parameters: [AES192, 5, 5]
+  - name: AES192-6-10
+    parameters: [AES192, 6, 10]
+    difficulty: 1
+  - name: AES192-7-13
+    parameters: [AES192, 7, 13]
+    difficulty: 1
+  - name: AES192-8-18
+    parameters: [AES192, 8, 18]
+    difficulty: 2
+  - name: AES192-9-24
+    parameters: [AES192, 9, 24]
+    difficulty: 2
+# AES 256
+  - name: AES256-3-1
+    parameters: [AES256, 3, 1]
+  - name: AES256-4-3
+    parameters: [AES256, 4, 3]
+  - name: AES256-5-3
+    parameters: [AES256, 5, 3]
+  - name: AES256-6-5
+    parameters: [AES256, 6, 5]
+  - name: AES256-7-5
+    parameters: [AES256, 7, 5]
+  - name: AES256-8-10
+    parameters: [AES256, 8, 10]
+    difficulty: 1
+  - name: AES256-9-15
+    parameters: [AES256, 9, 15]
+    difficulty: 1
+  - name: AES256-10-16
+    parameters: [AES256, 10, 16]
+    difficulty: 2
+  - name: AES256-11-20
+    parameters: [AES256, 11, 20]
+    difficulty: 2
+  - name: AES256-12-20
+    parameters: [AES256, 12, 20]
+    difficulty: 2
+  - name: AES256-13-24
+    parameters: [AES256, 13, 24]
+    difficulty: 2
+  - name: AES256-14-24
+    parameters: [AES256, 14, 24]
+    difficulty: 2
+measures: []
+iterations: 1
+timeout:
+  duration: 24
+  unit: 'HOURS'
