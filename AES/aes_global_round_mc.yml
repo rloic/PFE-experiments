@@ -1,9 +1,9 @@
 ---
 comments: >
   Exéprience utilisant la version AES Global Round avec implémentation de MC en fonction de DY, DY2 et DY 3
-src: ./AES/aes_global_round/src
+src: ./AES/aes_global_round_mc/src
 build: $SOURCE/build/libs
-output: ./AES/aes_global_round/results
+output: ./AES/aes_global_round_mc/results
 versioning:
   repository:
     url: https://github.com/rloic/PFE
@@ -73,6 +73,10 @@ experiments:
     parameters: [AES256, 14, 24]
     difficulty: 2
 measures: []
+iterations: 1
+timeout:
+  duration: 48
+  unit: HOURS
 iterations: 1
 timeout:
   duration: 24
