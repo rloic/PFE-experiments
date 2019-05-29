@@ -5,90 +5,239 @@
 import ExecutionState.*
 import org.yaml.snakeyaml.Yaml
 import org.yaml.snakeyaml.constructor.Constructor
-import java.io.File
-import java.io.FileWriter
+import java.io.*
 import java.lang.Exception
-import java.time.LocalDateTime
-import java.util.concurrent.TimeUnit
-import java.time.format.DateTimeFormatter
-import java.util.Locale
+import java.lang.StringBuilder
 import java.net.URLEncoder
+import java.util.concurrent.TimeUnit
 
-val parser = Yaml(Constructor(ExperimentationConfig::class.java))
+val parser = Yaml(Constructor(Project::class.java))
 
-class ExperimentationConfig(
-    var src: String = "",
-    var build: String = "",
+sealed class ExecutionState {
+    object Done : ExecutionState()
+    data class Timeout(val cmd: String, val timeLimit: TimeLimit) : ExecutionState()
+    data class Error(val cmd: String, val code: Int) : ExecutionState()
+}
+
+data class Project(
+    var path: String = "",
+    var shortcuts: Map<String, String>? = null,
+    var iterations: Int = 0,
     var versioning: Versioning? = null,
-    var output: String = "",
     var compile: String = "",
     var execute: String = "",
-    var experiments: Array<Experiment> = emptyArray(),
-    var measures: Array<String> = emptyArray(),
-    var iterations: Int = 0,
+    var experiments: List<Experiment> = emptyList(),
+    var measures: List<String> = emptyList(),
+    var stats: List<String> = emptyList(),
     var timeout: TimeLimit? = null,
     var comments: String? = null
 ) {
-
-    companion object {
-        private const val SOURCE = "$" + "SOURCE"
-        private const val BUILD = "$" + "BUILD"
-        private const val OUTPUT = "$" + "OUTPUT"
+    fun restore(cmd: String): String {
+        var cmd = cmd.replace("{PROJECT}", path)
+        val shortcuts = shortcuts
+        return if (shortcuts == null || shortcuts.isEmpty()) {
+            cmd
+        } else {
+            var old: String
+            do {
+                old = cmd
+                for ((label, text) in shortcuts) {
+                    cmd = cmd.replace("{$label}", text)
+                }
+                cmd = cmd.replace("{PROJECT}", path)
+            } while (cmd != old)
+            cmd
+        }
     }
-
-    private fun replaceKeyWords(str: String): String {
-        var copy = str
-        var old: String
-        do {
-        		old = copy
-        		copy = copy.replace(SOURCE, src)
-            .replace(BUILD, build)
-            .replace(OUTPUT, output)
-        } while (old != copy)
-        return copy  
-    }
-
-    fun build() = replaceKeyWords(build)
-    fun output() = replaceKeyWords(output)
-    fun compile() = replaceKeyWords(compile)
-    fun exec() = replaceKeyWords(execute)
-
 }
 
 data class Versioning(
-    var repository: Repository = Repository(),
-    var version: String = ""
-)
-
-data class Repository(
-    var url: String = "",
-    var authentication: Boolean = false
+    var repository: String = "",
+    var commit: String = "",
+    var authentication: Boolean? = null
 )
 
 data class Experiment(
     var name: String = "",
-    var parameters: Array<String> = emptyArray(),
-    var disable: Boolean = false,
+    var parameters: List<String> = emptyList(),
+    var disable: Boolean? = null,
     var timeout: TimeLimit? = null,
-    var difficulty: Int? = null
+    var level: Int? = null
 )
 
-class TimeLimit(
+data class TimeLimit(
     var duration: Long = 0,
     var unit: String = "SECONDS"
-) {
-    fun unit() = TimeUnit.valueOf(unit)
+)
+
+fun main(args: Array<String>) {
+    try {
+        val project = parser.load(File(args[0]).reader()) as Project
+        val folder = File(args[0].substringBeforeLast("."))
+        project.path = project.path.replace("{FILE}", args[0].substringBeforeLast("."))
+        val verbose = "-v" in args || "--verbose" in args
+
+        init(project, folder)
+        if ("-g" in args || "--git" in args) {
+            fetch(project)
+        }
+
+        if ("-b" in args || "--build" in args) {
+            build(project, verbose)
+        }
+
+        if ("--clean" in args) {
+            clean(project, folder)
+        }
+
+        if ("-r" in args || "--run" in args) {
+            execute(project, folder, verbose)
+        }
+
+    } catch (e: Exception) {
+        System.err.println(e)
+    }
+
 }
 
-fun createFolderIfNotExists(path: String): File {
-    val folder = File(path)
-    if (!folder.exists()) folder.mkdirs()
-    return folder
+fun init(project: Project, folder: File) {
+    File(project.path).mkdirs()
+    folder.mkdirs()
+
+    for (experiment in project.experiments) {
+        val expFolder = folder / "results" / experiment.name
+        expFolder.mkdirs()
+    }
 }
 
-fun execute(
+fun fetch(project: Project) {
+    val versioning = project.versioning ?: panic("versioning field is not filled")
+
+    val path = File(project.path)
+    if (path.exists() && !path.isDirectory) panic("${path.name} is not a directory")
+
+    val fetch = if (path.listFiles().isNotEmpty()) {
+        print("Some files are in the source directory (${project.path}). Would you erase them [y\\N]? ")
+        var response:String
+        do {
+            response = readLine()!!
+        } while (response !in listOf("y", "Y", "n", "N", ""))
+
+        val erase = response in listOf("y", "Y")
+        if(erase) {
+            path.deleteRecursively()
+            path.mkdirs()
+        }
+        erase
+    } else {
+        true
+    }
+
+    if (fetch) {
+        val gitClone = if (versioning.authentication == true) {
+            val (protocol, url) = versioning.repository.split("://")
+            print("Username for ${versioning.repository}: ")
+            val username = URLEncoder.encode(readLine()!!, "UTF-8")
+            print("Password for ${versioning.repository}: ")
+            val password = URLEncoder.encode(readLine()!!, "UTF-8")
+            cmd("git clone $protocol://$username:$password@$url ${project.path}")
+        } else {
+            cmd("git clone ${versioning.repository} ${project.path}")
+        }
+        if (gitClone != Done) panic(gitClone)
+
+        val checkout =
+            cmd("git --git-dir ${project.path}/.git --work-tree ${project.path} checkout ${versioning.commit}")
+        if (checkout != Done) panic(checkout)
+    } else {
+        println("Skip fetch")
+    }
+
+}
+
+fun build(project: Project, verbose: Boolean) {
+    println("Compile executable")
+    val build = cmd(project.restore(project.compile), verbose = verbose)
+    if (build != Done) {
+        panic(build)
+    } else {
+        println("Done")
+    }
+}
+
+fun clean(project: Project, folder: File) {
+    val resultsFolder = folder / "results"
+    for (experiment in project.experiments) {
+        val expFolder = resultsFolder / experiment.name
+        for (file in expFolder.listFiles()) {
+            file.delete()
+        }
+    }
+    val summaryCsv = resultsFolder / "summary.csv"
+    summaryCsv.delete()
+}
+
+fun execute(project: Project, folder: File, verbose: Boolean) {
+    val resultsFolder = folder / "results"
+    val summary = resultsFolder / "summary.csv"
+    if (!summary.exists()) {
+        summary.createNewFile()
+        summary.writer().apply {
+            append(CSV.header(project))
+        }.close()
+    }
+
+    for (experiment in project.experiments) {
+        val expFolder = resultsFolder / experiment.name
+        val lockFile = expFolder / "_lock"
+        if (!lockFile.exists()) {
+            lockFile.createNewFile()
+            println("Starting experiment [${experiment.name}]")
+
+            val times = LongArray(project.iterations)
+            for (iter in 0 until project.iterations) {
+                val log = expFolder / "$iter.csv"
+                if (!log.exists()) log.createNewFile()
+                val start = System.currentTimeMillis()
+                val status = cmd(
+                    project.restore(project.execute),
+                    args = experiment.parameters,
+                    verbose = verbose,
+                    redirect = log,
+                    timeout = experiment.timeout ?: project.timeout
+                )
+
+                when (status) {
+                    is Error, is Timeout -> {
+                        FileWriter(log, true).apply {
+                            append(status.toString() + "\n\n")
+                        }.close()
+                        times.fill(-1000)
+                    }
+                    is Done -> {
+                        val end = System.currentTimeMillis()
+                        times[iter] = end - start
+                    }
+                }
+
+            }
+            FileWriter(summary, true).apply {
+                append(CSV.row(project, experiment, expFolder / "0.csv", times))
+            }.close()
+        } else if (verbose) {
+            println("Skip experiment [${experiment.name}]")
+        }
+    }
+}
+
+/* UTILS */
+fun panic(reason: Any): Nothing = throw RuntimeException(reason.toString())
+
+operator fun File.div(child: String) = File(this, child)
+
+fun cmd(
     cmd: String,
-    args: Array<String> = emptyArray(),
+    args: List<String> = emptyList(),
     redirect: File? = null,
     verbose: Boolean = false,
     timeout: TimeLimit? = null
@@ -97,10 +246,8 @@ fun execute(
     var fullCmd = cmd
     if (args.isNotEmpty()) fullCmd += " " + args.joinToString(" ")
 
-    if (verbose) println("Run cmd ${fullCmd}")
-
+    println("> $fullCmd")
     val fileWriter = redirect?.bufferedWriter()
-    var hasTimeout = false
 
     return try {
         val process = Runtime.getRuntime().exec(fullCmd)
@@ -108,308 +255,106 @@ fun execute(
         val stdInput = process.inputStream.bufferedReader()
         val stdError = process.errorStream.bufferedReader()
 
+        if (redirect != null) {
+            Pipe(stdInput, redirect.bufferedWriter(), verbose).start()
+            Pipe(stdError, redirect.bufferedWriter(), verbose).start()
+        }
+
         if (timeout != null) {
-            if (!process.waitFor(timeout.duration, timeout.unit())) {
-                hasTimeout = true
+            if (!process.waitFor(timeout.duration, TimeUnit.valueOf(timeout.unit))) {
                 process.destroy()
-                process.waitFor()
             }
         }
-
-        var line: String? = stdInput.readLine()
-        while (line != null) {
-            if (verbose) {
-                println(line)
-            }
-            fileWriter?.append("$line\n")
-            line = stdInput.readLine()
-        }
-
-        line = stdError.readLine()
-        while (line != null) {
-            if (verbose) {
-                System.err.println("\u001B[31m$line\u001B[0m")
-            }
-            fileWriter?.append("[ERR] $line\n")
-            line = stdError.readLine()
-        }
-
         process.waitFor()
-        if (process.exitValue() != 0) {
-            Error
-        } else {
-            Done
+        when (process.exitValue()) {
+            0 -> Done
+            143 -> Timeout(cmd, timeout!!)
+            else -> Error(cmd, process.exitValue())
         }
-
     } catch (e: Exception) {
-        if (!hasTimeout) {
-            e.printStackTrace()
-            Error
-        } else {
-            println("TimeLimit")
-            Timeout
-        }
+        e.printStackTrace()
+        Error(cmd, -1)
     } finally {
         fileWriter?.close()
     }
 }
 
-fun main(args: Array<String>) {
-    val configurationFile = File(args[0])
-    val configuration: ExperimentationConfig = parser.load(configurationFile.bufferedReader()) as ExperimentationConfig
-
-    val outputFolder = createFolderIfNotExists(configuration.output())
-    val result = File(configuration.output(), "results.csv")
-
-    val computationOf = mapOf<String, (LongArray) -> Any>(
-        "min" to ::_min,
-        "max" to ::_max,
-        "mean" to ::_mean,
-        "std" to ::_std
-    )
-
-    val init = "--init" in args
-    val build = "--compile" in args
-    val clean = "--clean" in args
-    val verbose = "--verbose" in args
-    val runOpt = "--run" in args
-
-    if(init) {
-        if (configuration.versioning == null) {
-            println("No versioning data where found")
-            return
-        }
-
-        val cancelInit = if (File(configuration.src).exists()) {
-            var line: String
-            do {
-                print("Le dossier existe déjà voulez-vous l'écraser (o\\N)? ")
-                line = readLine()!!
-            } while (line !in listOf("", "y", "Y", "o", "O", "n", "N"))
-
-            when (line) {
-                "o", "O", "y", "Y" -> {
-                    File(configuration.src).deleteRecursively()
-                    false
+class Pipe(
+    val reader: BufferedReader,
+    val writer: BufferedWriter,
+    val stdOut: Boolean
+) : Thread() {
+    override fun run() {
+        try {
+            var line: String? = reader.readLine()
+            while (line != null) {
+                writer.write(line + "\n")
+                writer.flush()
+                if (stdOut) {
+                    println(line)
                 }
-                else -> {
-                    println("Cancel init")
-                    true
-                }
+                line = reader.readLine()
             }
-        } else false
-
-        if (!cancelInit) {
-            println("Init src")
-            val (url, authentication) = configuration.versioning!!.repository
-            val version = configuration.versioning!!.version
-            val gitClone = if (authentication) {
-                println("Git credentials - ")
-                print("username: ")
-                val userName = URLEncoder.encode(readLine()!!, "UTF-8")
-                print("password: ")
-                val password = URLEncoder.encode(readLine()!!, "UTF-8")
-                // git clone https://username:password@github.com/username/repository.git
-                val (protocol, url) = url.split("://")
-                execute("git clone $protocol://$userName:$password@$url ${configuration.src}", verbose = verbose)
-            } else {
-                execute("git clone $url ${configuration.src}")
-            }
-
-            if (gitClone == Done) {
-                println("Clonage dans ${configuration.src}")
-                val checkout = execute("git --git-dir ${configuration.src}/.git --work-tree ${configuration.src} checkout $version", verbose = verbose)
-                if (checkout != Done) {
-                    println("Error during git checkout")
-                } else {
-                    println("Checkout done")
-                }
-            } else {
-                println("Error during git clone")
-            }
-        }
-    }
-
-    if (build) {
-        createFolderIfNotExists(configuration.build())
-        print("Build... ")
-        if (execute(configuration.compile(), verbose = verbose) == Done)
-            println("Done")
-        else
-            println("Error")
-    }
-
-    if (clean) {
-        println("Cleaning experiments...")
-        outputFolder.listFiles()
-            .asSequence()
-            .filter { it.name.startsWith(".lock_") }
-            .forEach { it.delete() }
-
-        outputFolder.listFiles()
-            .asSequence()
-            .filter { it.isDirectory }
-            .forEach { it.deleteRecursively() }
-
-        if (result.exists()) result.delete()
-    }
-
-    if (runOpt) {
-        println("Run...")
-        if (!result.exists()) {
-            result.createNewFile()
-            result.writer().apply {
-		         append("\"name\"")
-		         append(",")
-		         append(configuration.measures.joinToString(","))
-		         if (configuration.measures.isNotEmpty()) {
-		             append(",")
-		         }
-		         appendln((0 until configuration.iterations).joinToString(",") { "\"iteration $it\"" })
-        		}.close()
-        }
-
-        for (experiment in configuration.experiments.filter { !it.disable }.sortedBy { it.difficulty ?: 0 }) {
-            val lockFile = File(configuration.output(), ".lock_" + experiment.name)
-            if (!lockFile.exists()) {
-                lockFile.createNewFile()
-                val now = LocalDateTime.now()
-                println("Running experiment ${experiment.name} @ ${now % "HH:mm"} the ${now % "EE dd, YYYY"}")
-                val results = LongArray(configuration.iterations)
-                createFolderIfNotExists(configuration.output() + "/" + experiment.name)
-
-                for (iteration in 0 until configuration.iterations) {
-                	  val iterationState = runIteration(iteration, configuration, experiment, results, verbose)
-                	  
-                	  if (iterationState == Error) {
-                	  	 lockFile.delete()
-                	  }
-                	  if (iterationState != Done) {
-                	  	 break
-                	  }
-                }
-
-                writeMeasures(
-                    experiment.name,
-                    configuration.measures,
-                    results,
-                    result
-                )
-            }
+        } catch (ioe: IOException) {
         }
     }
 }
 
-fun _min(time: LongArray): Long {
-    var min = time[0]
-    for (i in 0 until time.size) {
-        if (time[i] < min) min = time[i]
+object Stats {
+
+    fun min(records: LongArray) = records.min()!!
+    fun max(records: LongArray) = records.max()!!
+    fun mean(records: LongArray) = if (records.isEmpty()) 0L else records.sum() / records.size
+    fun uniq(records: LongArray) = records[0]
+
+}
+
+object CSV {
+
+    fun header(project: Project): String {
+        val header = StringBuilder()
+        header.append("\"Experiement\",")
+        for (measure in project.measures) {
+            header.append("\"$measure\",")
+        }
+        for (stat in project.stats) {
+            header.append("\"$stat [in seconds]\",")
+        }
+        header.append("\n")
+        return header.toString()
     }
-    return min
-}
 
-fun _max(time: LongArray): Long {
-    var max = time[0]
-    for (i in 0 until time.size) {
-        if (time[i] > max) max = time[i]
-    }
-    return max
-}
+    fun row(project: Project, experiment: Experiment, logFile: File?, times: LongArray): String {
+        val row = StringBuilder()
+        row.append("\"${experiment.name}\",")
 
-fun _mean(time: LongArray): Double {
-    var sum = 0L
-    for (value in time) sum += value
-    return sum.toDouble() / time.size.toDouble()
-}
+        val content = logFile?.readLines()?.last()?.split(",")
+        for (i in 0 until project.measures.size) {
+            if (content != null && content.size > i) {
+                row.append(content[i])
+            }
+            row.append(",")
+        }
 
-fun _std(time: LongArray): Double {
-    val mean = _mean(time)
-    var sumError = 0.0
-    for (value in time) {
-        sumError += (value - mean) * (value - mean)
-    }
-    return Math.sqrt(sumError / time.size.toDouble())
-}
+        for (stat in project.stats) {
 
-fun writeMeasures(
-    name: String,
-    measures: Array<String>,
-    results: LongArray,
-    output: File
-) {
+            val fn = when (stat) {
+                "min", "MIN" -> Stats::min
+                "max", "MAX" -> Stats::max
+                "mean", "MEAN", "avg", "AVG" -> Stats::mean
+                "uniq", "UNIQ" -> Stats::uniq
+                else -> null
+            }
 
-    val computationOf = mapOf(
-        "min" to ::_min,
-        "max" to ::_max,
-        "mean" to ::_mean,
-        "std" to ::_std
-    )
-
-    val writer = FileWriter(output, true)
-    writer.append("\"$name\"")
-    writer.append(",")
-    writer.append(
-        measures.joinToString(",") { measure ->
-            val fn = computationOf[measure]
             if (fn != null) {
-                "${fn(results)}"
-            } else {
-                "\"Invalid\""
+                row.append(fn(times) / 1000)
             }
+            row.append(",")
+
         }
-    )
-    if(measures.isNotEmpty()) {
-        writer.append(",")
-    }
-    writer.appendln(results.joinToString(",") { "$it" })
-    writer.close()
-
-}
-
-fun runIteration(
-    n: Int,
-    configuration: ExperimentationConfig,
-    experiment: Experiment,
-    results: LongArray,
-    verbose: Boolean
-): ExecutionState {
-
-    val outputFile = File(configuration.output() + "/" + experiment.name, "$n.txt")
-    if (!outputFile.exists()) outputFile.createNewFile()
-
-    val start = System.currentTimeMillis()
-    val validExecution = execute(
-        configuration.exec(),
-        experiment.parameters,
-        outputFile,
-        verbose,
-        experiment.timeout ?: configuration.timeout
-    )
-
-    when (validExecution) {
-        Done -> {
-            val end = System.currentTimeMillis()
-            results[n] = (end - start) / 1000
-        }
-        Timeout -> {
-            results[n] = -1
-        }
-        Error -> {
-            results[n] = -2
-            outputFile.delete()
-        }
+        row.append("\n")
+        return row.toString()
     }
 
-    return validExecution
-
 }
 
-operator fun LocalDateTime.rem(format: String): String {
-    return format(DateTimeFormatter.ofPattern(format, Locale.ENGLISH))
-}
-
-enum class ExecutionState {
-    Timeout,
-    Done,
-    Error
-}

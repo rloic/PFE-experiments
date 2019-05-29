@@ -1,26 +1,29 @@
 ---
 comments: >
   Exéprience utilisant la version AES Global Round avec implémentation de MC en fonction de DY, DY2 et DY 3
-src: ./AES/aes_global_round_mc/src
-build: $SOURCE/build/libs
-output: ./AES/aes_global_round_mc/results
+path: '{FILE}/src'
+shortcuts:
+  gradle_conf: 'build_aes.gradle'
+  gradle_task: 'jar'
+  exec: 'AES-1.0-SNAPSHOT.jar'
+  build: '{PROJECT}/build/libs'
+  java: 'java -jar'
 versioning:
-  repository:
-    url: https://github.com/rloic/PFE
-    authentication: true
-  version: bf67f723c02ddb1cbf56357b00ba8b899ab886f4
-compile: gradle --build-file $SOURCE/build_aes.gradle jar
-execute: java -jar $BUILD/AES-1.0-SNAPSHOT.jar
+  repository: https://github.com/rloic/PFE
+  authentication: true
+  commit: bf67f723c02ddb1cbf56357b00ba8b899ab886f4
+compile: 'gradle --build-file {PROJECT}/{gradle_conf} {gradle_task}'
+execute: '{java} {build}/{exec}'
 experiments:
 # AES 128
   - name: AES128-3-5
     parameters: [AES128, 3, 5]
   - name: AES128-4-12
     parameters: [AES128, 4, 12]
-    difficulty: 1
+    level: 1
   - name: AES128-5-17
     parameters: [AES128, 5, 17]
-    difficulty: 2
+    level: 2
 # AES 192
   - name: AES192-3-1
     parameters: [AES192, 3, 1]
@@ -30,16 +33,16 @@ experiments:
     parameters: [AES192, 5, 5]
   - name: AES192-6-10
     parameters: [AES192, 6, 10]
-    difficulty: 1
+    level: 1
   - name: AES192-7-13
     parameters: [AES192, 7, 13]
-    difficulty: 1
+    level: 1
   - name: AES192-8-18
     parameters: [AES192, 8, 18]
-    difficulty: 2
+    level: 2
   - name: AES192-9-24
     parameters: [AES192, 9, 24]
-    difficulty: 2
+    level: 2
 # AES 256
   - name: AES256-3-1
     parameters: [AES256, 3, 1]
@@ -53,31 +56,28 @@ experiments:
     parameters: [AES256, 7, 5]
   - name: AES256-8-10
     parameters: [AES256, 8, 10]
-    difficulty: 1
+    level: 1
   - name: AES256-9-15
     parameters: [AES256, 9, 15]
-    difficulty: 1
+    level: 1
   - name: AES256-10-16
     parameters: [AES256, 10, 16]
-    difficulty: 2
+    level: 2
   - name: AES256-11-20
     parameters: [AES256, 11, 20]
-    difficulty: 2
+    level: 2
   - name: AES256-12-20
     parameters: [AES256, 12, 20]
-    difficulty: 2
+    level: 2
   - name: AES256-13-24
     parameters: [AES256, 13, 24]
-    difficulty: 2
+    level: 2
   - name: AES256-14-24
     parameters: [AES256, 14, 24]
-    difficulty: 2
-measures: []
+    level: 2
+measures: ['#solutions', '#nodes']
+stats: [uniq]
 iterations: 1
 timeout:
-  duration: 48
-  unit: HOURS
-iterations: 1
-timeout:
-  duration: 24
-  unit: 'HOURS'
+  duration: 10
+  unit: SECONDS
