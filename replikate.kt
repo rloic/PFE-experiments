@@ -9,6 +9,8 @@ import java.io.*
 import java.lang.Exception
 import java.lang.StringBuilder
 import java.net.URLEncoder
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 val parser = Yaml(Constructor(Project::class.java))
@@ -192,7 +194,10 @@ fun execute(project: Project, folder: File, verbose: Boolean) {
         val lockFile = expFolder / "_lock"
         if (!lockFile.exists()) {
             lockFile.createNewFile()
-            println("Starting experiment [${experiment.name}]")
+            val now = Date()
+            val hours = SimpleDateFormat("HH:mm")
+            val date = SimpleDateFormat("MMM dd, YYY")
+            println("Starting experiment [${experiment.name}] @ ${hours.format(now)} the ${date.format(now)}")
 
             val times = LongArray(project.iterations)
             for (iter in 0 until project.iterations) {
@@ -313,7 +318,7 @@ object CSV {
 
     fun header(project: Project): String {
         val header = StringBuilder()
-        header.append("\"Experiement\",")
+        header.append("\"Experiment\",")
         for (measure in project.measures.filter { it != "skip" }) {
             header.append("\"$measure\",")
         }
@@ -359,3 +364,4 @@ object CSV {
     }
 
 }
+
