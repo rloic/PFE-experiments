@@ -187,7 +187,7 @@ fun execute(project: Project, folder: File, verbose: Boolean) {
         }.close()
     }
 
-    for (experiment in project.experiments) {
+    for (experiment in project.experiments.sortedBy { it.level ?: 0 }) {
         val expFolder = resultsFolder / experiment.name
         val lockFile = expFolder / "_lock"
         if (!lockFile.exists()) {
@@ -314,7 +314,7 @@ object CSV {
     fun header(project: Project): String {
         val header = StringBuilder()
         header.append("\"Experiement\",")
-        for (measure in project.measures) {
+        for (measure in project.measures.filter { it != "skip" }) {
             header.append("\"$measure\",")
         }
         for (stat in project.stats) {
@@ -330,10 +330,12 @@ object CSV {
 
         val content = logFile?.readLines()?.last()?.split(",")
         for (i in 0 until project.measures.size) {
-            if (content != null && content.size > i) {
-                row.append(content[i])
+            if (project.measures[i] != "skip") {
+                if (content != null && content.size > i) {
+                    row.append(content[i])
+                }
+                row.append(",")
             }
-            row.append(",")
         }
 
         for (stat in project.stats) {
@@ -357,4 +359,3 @@ object CSV {
     }
 
 }
-

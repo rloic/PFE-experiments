@@ -75,9 +75,9 @@ experiments:
   - name: AES256-14-24
     parameters: [AES256, 14, 24]
     level: 2
-measures: ['#solutions', '#nodes']
+measures: [skip, '#solutions', skip, skip, '#nodes']
 stats: [uniq]
 iterations: 1
 timeout:
-  duration: 10
-  unit: SECONDS
+  duration: 48
+  unit: HOURS
