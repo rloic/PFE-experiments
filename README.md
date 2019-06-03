@@ -10,6 +10,8 @@
 **AES**
 - aes_global_round_mc.yml
 - aes_global_round_no_mc.yml
+- aes_advanced_round_no_transit.yml
+- aes_advanced_round_transit.yml
 
 ### AES
 #### AES Global Round MC
@@ -27,3 +29,11 @@ Implementation of AES problem with the abstract constraint *abstract XOR*. The p
 - Step 2: We solve the problem for each step 1
 
 MixColumn during step 1 is implemented diff variables to represents the maximum distance separable property of the mix columns matrix.
+
+#### AES Advanced Round No Transit
+**Description:**
+Solving the step_{round} and the step_{1} with Advanced Model, the transitivity constraints over DY and DK are **disabled**.
+
+#### AES Advanced Round Transit
+**Description:**
+Solving the step_{round} and the step_{1} with Advanced Model, the transitivity constraints over DY and DK are **enabled**.
