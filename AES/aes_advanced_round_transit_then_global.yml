@@ -1,6 +1,6 @@
 ---
 comments: >
-  Expérience utilisant la version Choco Advanced pour la résolution de la $$step_{round}$$ sans les diff (pas de transitivité) et la version Choco Global[1-5] pour la $$step_{1}$$.
+  Expérience utilisant la version Choco Advanced pour la résolution de la $$step_{round}$$ avec les Diffk (transitivité) et la version Choco Global[1-5] pour la $$step_{1}$$.
 path: '{FILE}/src'
 shortcuts:
   gradle_conf: 'build_aes.gradle'
@@ -11,7 +11,7 @@ shortcuts:
 versioning:
   repository: https://github.com/rloic/PFE
   authentication: true
-  commit: f748459b9d9bd47f4119a15c03cbf2a138999a43
+  commit: cf39d6f6f8f0c22c5c5425a13935fff95d732248
 compile: 'gradle --build-file {PROJECT}/{gradle_conf} {gradle_task}'
 execute: '{java} {build}/{exec}'
 experiments:

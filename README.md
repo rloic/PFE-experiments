@@ -14,6 +14,8 @@
 - aes_global_round_no_mc.yml
 - aes_advanced_round_no_transit.yml
 - aes_advanced_round_transit.yml
+- aes_advanced_round_no_transit_then_global.yml
+- aes_advanced_round_transit_then_global.yml
 
 **Midori**
 - midori_full_steps.yml
@@ -43,6 +45,16 @@ Solving the $$step_{round}$$ and the $$step_{1}$$ with Advanced Model, the trans
 #### AES Advanced Round Transit
 **Description:**
 Solving the $$step_{round}$$ and the s$$tep_{1}$$ with Advanced Model, the transitivity constraints over DY and DK are **enabled**.
+
+#### AES Advanced Round No Transit Then Global
+**Description:**
+Use the Advanced Model to solve the $$step_{round}$$ without the diff variables (no transitivity). Then use the Global model to solve the $$step_{1}$$.
+
+#### AES Advanced Round Transit Then Global
+**Description:**
+Use the Advanced Model to solve the $$step_{round}$$ **WITH** the diff variables (transitivity). Then use the Global model to solve the $$step_{1}$$.
+
+#### AES Advanced Round Transit Then Global
 
 ### Midori
 #### Midori Full Steps
