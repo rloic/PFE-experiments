@@ -1,0 +1,96 @@
+---
+comments: >
+  Expérience comporant l'utilisation de l'heurisique personnalisée vs standard
+path: '{FILE}/src'
+shortcuts:
+  gradle_conf: 'build_midori.gradle'
+  gradle_task: 'jar'
+  exec: 'Midori-1.0-SNAPSHOT.jar'
+  build: '{PROJECT}/build/libs'
+  java: 'java -jar'
+versioning:
+  repository: https://github.com/rloic/PFE
+  authentication: true
+  commit: 17a3cdb5ef5ab73765182b933058a06832ced2c7
+compile: 'gradle --build-file {PROJECT}/{gradle_conf} {gradle_task}'
+execute: '{java} {build}/{exec}'
+experiments:
+# Midori
+  - name: Midori128-3-3-Custom
+    parameters: [3, true]
+  - name: Midori128-3-3-Standard
+    parameters: [3, false]
+  - name: Midori128-4-4-Custom
+    parameters: [4, true]
+  - name: Midori128-4-4-Standard
+    parameters: [4, false]
+  - name: Midori128-5-5-Custom
+    parameters: [5, true]
+  - name: Midori128-5-5-Standard
+    parameters: [5, false]
+  - name: Midori128-6-6-Custom
+    parameters: [6, true]
+  - name: Midori128-6-6-Standard
+    parameters: [6, false]
+  - name: Midori128-7-7-Custom
+    parameters: [7, true]
+  - name: Midori128-7-7-Standard
+    parameters: [7, false]
+  - name: Midori128-8-8-Custom
+    parameters: [8, true]
+  - name: Midori128-8-8-Standard
+    parameters: [8, false]
+  - name: Midori128-9-9-Custom
+    parameters: [9, true]
+  - name: Midori128-9-9-Standard
+    parameters: [9, false]
+  - name: Midori128-10-10-Custom
+    parameters: [10, true]
+  - name: Midori128-10-10-Standard
+    parameters: [10, false]
+  - name: Midori128-11-11-Custom
+    parameters: [11, true]
+  - name: Midori128-11-11-Standard
+    parameters: [11, false]
+  - name: Midori128-12-12-Custom
+    parameters: [12, true]
+  - name: Midori128-12-12-Standard
+    parameters: [12, false]
+  - name: Midori128-13-13-Custom
+    parameters: [13, true]
+  - name: Midori128-13-13-Standard
+    parameters: [13, false]
+  - name: Midori128-14-14-Custom
+    parameters: [14, true]
+  - name: Midori128-14-14-Standard
+    parameters: [14, false]
+  - name: Midori128-15-15-Custom
+    parameters: [15, true]
+  - name: Midori128-15-15-Standard
+    parameters: [15, false]
+  - name: Midori128-16-16-Custom
+    parameters: [16, true]
+  - name: Midori128-16-16-Standard
+    parameters: [16, false]
+  - name: Midori128-17-17-Custom
+    parameters: [17, true]
+  - name: Midori128-17-17-Standard
+    parameters: [17, false]
+  - name: Midori128-18-18-Custom
+    parameters: [18, true]
+  - name: Midori128-18-18-Standard
+    parameters: [18, false]
+  - name: Midori128-19-19-Custom
+    parameters: [19, true]
+  - name: Midori128-19-19-Standard
+    parameters: [19, false]
+  - name: Midori128-20-20-Custom
+    parameters: [20, true]
+  - name: Midori128-20-20-Standard
+    parameters: [20, false]
+measures: ['#solutions', '#nodes']
+stats: [uniq]
+iterations: 1
+timeout:
+  duration: 48
+  unit: HOURS
