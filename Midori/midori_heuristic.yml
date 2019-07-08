@@ -89,7 +89,7 @@ experiments:
   - name: Midori128-20-20-Standard
     parameters: [20, false]
 measures: ['#solutions', '#nodes']
-stats: [uniq]
+stats: [time]
 iterations: 1
 timeout:
   duration: 12

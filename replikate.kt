@@ -76,7 +76,8 @@ fun main(args: Array<String>) {
     try {
         val project = parser.load(File(args[0]).reader()) as Project
         val folder = File(args[0].substringBeforeLast("."))
-        project.path = project.path.replace("{FILE}", args[0].substringBeforeLast("."))
+        val configFileName = args[0].substringBeforeLast(".")
+        project.path = project.path.replace("{FILE}", configFileName)
         val verbose = "-v" in args || "--verbose" in args
 
         init(project, folder)
@@ -89,11 +90,11 @@ fun main(args: Array<String>) {
         }
 
         if ("--clean" in args) {
-            clean(project, folder)
+            clean(project, folder, configFileName)
         }
 
         if ("-r" in args || "--run" in args) {
-            execute(project, folder, verbose)
+            execute(project, folder, configFileName, verbose)
         }
 
     } catch (e: Exception) {
@@ -167,7 +168,7 @@ fun build(project: Project, verbose: Boolean) {
     }
 }
 
-fun clean(project: Project, folder: File) {
+fun clean(project: Project, folder: File, configFileName: String) {
     val resultsFolder = folder / "results"
     for (experiment in project.experiments) {
         val expFolder = resultsFolder / experiment.name
@@ -175,13 +176,13 @@ fun clean(project: Project, folder: File) {
             file.delete()
         }
     }
-    val summaryCsv = resultsFolder / "summary.csv"
+    val summaryCsv = resultsFolder / "$configFileName.csv"
     summaryCsv.delete()
 }
 
-fun execute(project: Project, folder: File, verbose: Boolean) {
+fun execute(project: Project, folder: File, configFileName: String, verbose: Boolean) {
     val resultsFolder = folder / "results"
-    val summary = resultsFolder / "summary.csv"
+    val summary = resultsFolder / "$configFileName.csv"
     if (!summary.exists()) {
         summary.createNewFile()
         summary.writer().apply {
@@ -224,7 +225,7 @@ fun execute(project: Project, folder: File, verbose: Boolean) {
                         times[iter] = end - start
                     }
                 }
-
+                if (status !is Done) break
             }
             FileWriter(summary, true).apply {
                 append(CSV.row(project, experiment, expFolder / "0.csv", times))
@@ -310,7 +311,17 @@ object Stats {
     fun min(records: LongArray) = records.min()!!
     fun max(records: LongArray) = records.max()!!
     fun mean(records: LongArray) = if (records.isEmpty()) 0L else records.sum() / records.size
-    fun uniq(records: LongArray) = records[0]
+    fun time(records: LongArray) = records[0]
+    fun std(records: LongArray): Long {
+        val N = records.size
+        val mean = mean(records)
+        var sum = 0L
+        for (i in 0 until records.size) {
+            val x = records[i]
+            sum += (x - mean) * (x - mean)
+        }
+        return (sum / (N - 1))
+    }
 
 }
 
@@ -323,7 +334,7 @@ object CSV {
             header.append("\"$measure\",")
         }
         for (stat in project.stats) {
-            header.append("\"$stat [in seconds]\",")
+            header.append("\"$stat\",")
         }
         header.append("\n")
         return header.toString()
@@ -344,17 +355,21 @@ object CSV {
         }
 
         for (stat in project.stats) {
-
             val fn = when (stat) {
                 "min", "MIN" -> Stats::min
                 "max", "MAX" -> Stats::max
                 "mean", "MEAN", "avg", "AVG" -> Stats::mean
-                "uniq", "UNIQ" -> Stats::uniq
+                "std", "STD" -> Stats::std
+                "time", "TIME" -> Stats::time
                 else -> null
             }
 
             if (fn != null) {
-                row.append(fn(times) / 1000)
+                val statTime = fn(times) / 1000
+                if (statTime >= 0) row.append(statTime)
+                else row.append("nan")
+            } else {
+                row.append("nan")
             }
             row.append(",")
 

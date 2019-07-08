@@ -53,7 +53,7 @@ experiments:
   - name: Midori128-20-20
     parameters: [20, 20]
 measures: ['probability', '#solutions', '#nodes']
-stats: [uniq]
+stats: [time]
 iterations: 1
 timeout:
   duration: 48
