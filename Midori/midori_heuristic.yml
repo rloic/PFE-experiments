@@ -92,5 +92,5 @@ measures: ['#solutions', '#nodes']
 stats: [uniq]
 iterations: 1
 timeout:
-  duration: 48
+  duration: 12
   unit: HOURS
