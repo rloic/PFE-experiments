@@ -75,9 +75,9 @@ data class TimeLimit(
 fun main(args: Array<String>) {
     try {
         val project = parser.load(File(args[0]).reader()) as Project
-        val folder = File(args[0].substringBeforeLast("."))
-        val configFileName = args[0].substringBeforeLast(".")
-        project.path = project.path.replace("{FILE}", configFileName)
+        val folder = File(args[0].substringBeforeLast('.'))
+        val configFileName = args[0].substringAfterLast('/').substringBeforeLast('.')
+        project.path = project.path.replace("{FILE}", args[0].substringBeforeLast('.'))
         val verbose = "-v" in args || "--verbose" in args
 
         init(project, folder)
