@@ -2,8 +2,10 @@
 
 # PFE-Experiements	
 
+How use `replikate.kt` ? Look at [Replikate repository](https://github.com/rloic/replikate)
+
 ## Prerequisites
-- **Gradle**: Gralde 4.4.1 or later
+- **Gradle**: Gradle 4.4.1 or later
 - **Java Runtime:** OpenJDK 1.8.0_212 or later
 
 ## Environment
