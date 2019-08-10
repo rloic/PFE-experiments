@@ -2,6 +2,10 @@
 
 # PFE-Experiements	
 
+## Prerequisites
+- **Gradle**: Gralde 4.4.1 or later
+- **Java Runtime:** OpenJDK 1.8.0_212 or later
+
 ## Environment
 - **OS:** Ubuntu 18.04.2 LTS
 - **CPU:** Intel XEON E3-1270 v3 @ 3.50Ghz x 8
